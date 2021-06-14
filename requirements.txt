@@ -1,0 +1,6 @@
+mypy
+pytest
+pytest-mock
+pytest-cov
+setuptools
+build
