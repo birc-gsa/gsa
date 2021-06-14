@@ -5,6 +5,7 @@ import argparse
 import yaml
 import itertools
 import os.path
+import subprocess
 
 from . import commands
 
@@ -107,17 +108,6 @@ def reads(args: argparse.Namespace) -> None:
                             args.genome, args.out)
 
 
-@command()
-def test(args: argparse.Namespace) -> None:
-    """Tests tools for GSA exercises.
-
-    Choose a sub-command to specify which type of data.
-    """
-    # This is a menu point. There's not any action in it.
-    # If called, we just inform the user to pick a sub-command.
-    test.parser.print_usage()
-
-
 def get_yaml_list(d: dict[str, typing.Any], name: str) -> list[typing.Any]:
     if name not in d:
         print(f"Warning: missing yaml field {name}")
@@ -192,6 +182,10 @@ class test_config:
         reads_e: list[int] = get_yaml_list(reads, 'edits')
         self.reads = list(itertools.product(reads_k, reads_n, reads_e))
 
+        self.genomes_reads = list(
+            itertools.product(self.genomes, self.reads)
+        )
+
 
 def test_setup(config: test_config, verbose: bool) -> None:
     # Setting up directories
@@ -212,11 +206,12 @@ def test_setup(config: test_config, verbose: bool) -> None:
         for tool in config.tools:
             relink(f"../../data/{bname}", f'test/tools/{tool}/{bname}')
 
-        for num, length, e in config.reads:
-            fastq_name = f"test/data/{test_reads_name(n, k, num, length, e)}"
-            with (open(fasta_name, 'r') as fasta_f,
-                  open(fastq_name, 'w') as fastq_f):
-                commands.simulate_reads(num, length, e, fasta_f, fastq_f)
+    for (k, n), (num, length, e) in config.genomes_reads:
+        fasta_name = f"test/data/{test_genome_name(n, k)}"
+        fastq_name = f"test/data/{test_reads_name(n, k, num, length, e)}"
+        with (open(fasta_name, 'r') as fasta_f,
+              open(fastq_name, 'w') as fastq_f):
+            commands.simulate_reads(num, length, e, fasta_f, fastq_f)
 
             bname = os.path.basename(fastq_name)
             for tool in config.tools:
@@ -232,47 +227,65 @@ def preprocess(config: test_config, verbose: bool) -> None:
                 )
                 if verbose:
                     print("Preprocessing:", cmd)
-                res = os.system(f"{cmd} >& /dev/null")
-                if res != 0:
+                res = subprocess.run(
+                    args=cmd,
+                    shell=True,
+                    stdout=open('/dev/null', 'w'),
+                    stderr=open('/dev/null', 'w')
+                )
+                if res.returncode != 0:
                     print("Preprocessing failed!")
                     sys.exit(1)
 
 
 def map(config: test_config, verbose: bool) -> None:
     for name, tool in config.tools.items():
-        for k, n in config.genomes:
+        for (k, n), (num, length, e) in config.genomes_reads:
             fastaname = f'test/tools/{name}/{test_genome_name(n, k)}'
-            for num, length, e in config.reads:
-                fastqname = f"test/tools/{name}/{test_reads_name(n, k, num, length, e)}"
-                outname = f"test/tools/{name}/{test_out_name(n, k, num, length, e)}"
-                cmd = tool['map'].format(
-                    genome=fastaname,
-                    reads=fastqname,
-                    e=e,
-                    outfile=outname
-                )
-                if verbose:
-                    print("Mapping:", cmd)
-                res = os.system(f"{cmd} >& /dev/null")
-                if res != 0:
-                    print("Command:", cmd)
-                    print("Mapping failed!")
-                    sys.exit(1)
+            fastqname = f"test/tools/{name}/{test_reads_name(n, k, num, length, e)}"  # noqal: E501
+            outname = f"test/tools/{name}/{test_out_name(n, k, num, length, e)}"  # noqal: E501
+            cmd = tool['map'].format(
+                genome=fastaname,
+                reads=fastqname,
+                e=e,
+                outfile=outname
+            )
+            if verbose:
+                print("Mapping:", cmd)
+            res = subprocess.run(
+                args=cmd,
+                shell=True,
+                stdout=open('/dev/null', 'w'),
+                stderr=open('/dev/null', 'w')
+            )
+            if res.returncode != 0:
+                print("Command:", cmd)
+                print("Mapping failed!")
+                sys.exit(1)
+
+
+def sam_files(tool: str, config: test_config) -> list[str]:
+    return [
+        f"test/tools/{tool}/{test_out_name(n, k, num, length, e)}"
+        for (k, n), (num, length, e) in config.genomes_reads
+    ]
 
 
 @command(
     argument('config',
              help="Configuration file",
              type=argparse.FileType('r')),
-    parent=test.subparsers
 )
-def exact(args: argparse.Namespace) -> None:
+def test(args: argparse.Namespace) -> None:
     config = test_config(
         yaml.load(args.config.read(), Loader=yaml.SafeLoader)
     )
     test_setup(config, args.verbose)
     preprocess(config, args.verbose)
     map(config, args.verbose)
+
+    ref_sams = sam_files(config.reference, config)
+    print(ref_sams)
 
 
 def main() -> None:
