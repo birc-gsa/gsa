@@ -152,7 +152,10 @@ def search(args: argparse.Namespace) -> None:
     parent=search.subparsers
 )
 def exact(args: argparse.Namespace) -> None:
-    pass
+    """Run an exact pattern matching algorithm.
+
+    Select the algorithm to run."""
+    search.parser.print_usage()
 
 
 for algo in SEARCH_METHODS:
@@ -160,6 +163,35 @@ for algo in SEARCH_METHODS:
         algo.name, help=algo.__doc__,
     )
     parser.set_defaults(command=exact_wrapper(algo.map))
+
+
+@command(
+    argument("genome", help="Genome to preprocess (FASTA file).",
+             type=str)
+)
+def preprocess(args: argparse.Namespace) -> None:
+    """Preprocess a genome.
+
+    Select the algorithm to preprocess for."""
+    preprocess.parser.print_usage()
+
+
+def preprocess_wrapper(
+    f: typing.Callable[[str], None]
+) -> typing.Callable[[argparse.Namespace], None]:
+    def preprocess(args: argparse.Namespace) -> None:
+        if not os.access(args.genome, os.R_OK):
+            error.error(f"Can't open genome file {args.genome}")
+        f(args.genome)
+    return preprocess
+
+
+for algo in SEARCH_METHODS:
+    if algo.can_preprocess:
+        parser = preprocess.subparsers.add_parser(
+            algo.name, help=algo.__doc__,
+        )
+        parser.set_defaults(command=preprocess_wrapper(algo.preprocess))
 
 
 @command(

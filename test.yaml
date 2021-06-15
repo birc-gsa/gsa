@@ -4,10 +4,13 @@ tools:
   kmp:
     map: "gsa search {genome} {reads} -o {outfile} exact kmp"
   bwt:
+    preprocess: "gsa preprocess {genome} bwt"
+    map: "gsa search {genome} {reads} -o {outfile} exact bwt"
+  cbwt:
     preprocess: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -p {genome}"
     map: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -d {e} {genome} {reads} > {outfile}"
 
-reference-tool: bwt
+reference-tool: cbwt
 
 genomes:
   length: [100, 1000]
