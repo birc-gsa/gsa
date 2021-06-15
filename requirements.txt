@@ -5,3 +5,4 @@ pytest-cov
 setuptools
 build
 pyyaml
+git+https://github.com/mailund/pystr#egg=pystr

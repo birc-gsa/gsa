@@ -1,13 +1,14 @@
 from __future__ import annotations
-import sys
+
 import typing
 import argparse
 import yaml
-import itertools
-import os.path
-import subprocess
+import sys
+import os
 
+from . import error
 from . import commands
+from . import search_methods
 
 ARGS_ROOT = argparse.ArgumentParser(
     description='''
@@ -108,167 +109,71 @@ def reads(args: argparse.Namespace) -> None:
                             args.genome, args.out)
 
 
-def get_yaml_list(d: dict[str, typing.Any], name: str) -> list[typing.Any]:
-    if name not in d:
-        print(f"Warning: missing yaml field {name}")
-        return []
-    return d[name] if isinstance(d[name], list) else [d[name]]
+SEARCH_METHODS = [
+    cls for cls in vars(search_methods).values()
+    if isinstance(cls, type)
+    and issubclass(cls, search_methods.Search)
+    and cls is not search_methods.Search
+]
 
 
-def check_make_dir(dirname: str) -> None:
-    if os.path.isfile(dirname):
-        print(f"File '{dirname}' exists and isn't a directory")
-        sys.exit(1)
-    if not os.path.isdir(dirname):
-        print(f"Creating directory '{dirname}'")
-        os.mkdir(dirname)
+def exact_wrapper(
+    f: typing.Callable[[str, str, typing.TextIO, int], None]
+) -> typing.Callable[[argparse.Namespace], None]:
+    def search(args: argparse.Namespace) -> None:
+        if not os.access(args.genome, os.R_OK):
+            error.error(f"Can't open genome file {args.genome}")
+        if not os.access(args.reads, os.R_OK):
+            error.error(f"Can't open fastq file {args.reads}")
+        f(args.genome, args.reads, args.out, 0)
+    return search
 
 
-def relink(src: str, dst: str) -> None:
-    if os.path.islink(dst):
-        os.remove(dst)
-    if os.path.isfile(dst) or os.path.isdir(dst):
-        print(f"File/directory {dst} is in the way of a symbolic link.")
-        sys.exit(1)
-    os.symlink(src, dst)
+@command(
+    argument("genome", help="Genome to search in (FASTA file).",
+             type=str),
+    argument("reads", help="Reads to search for (FASTQ file).",
+             type=str),
+    argument("-o", "--out",
+             help="File to write results in (default stdout).",
+             type=argparse.FileType('w'), default=sys.stdout),
+)
+def search(args: argparse.Namespace) -> None:
+    """Search genome for reads.
+
+    Choose a sub-command to specify which type of search.
+    """
+    # This is a menu point. There's not any action in it.
+    # If called, we just inform the user to pick a sub-command.
+    search.parser.print_usage()
 
 
-def test_genome_name(length: int, chromosomes: int) -> str:
-    return f"genome-{length}-{chromosomes}.fa"
+@command(
+    parent=search.subparsers
+)
+def exact(args: argparse.Namespace) -> None:
+    pass
 
 
-def test_reads_name(genome_length: int, chromosomes: int,
-                    no_reads: int, read_lengths: int, edits: int) -> str:
-    fasta = test_genome_name(genome_length, chromosomes)
-    return f"{fasta}-reads-{no_reads}-{read_lengths}-{edits}.fq"
+for algo in SEARCH_METHODS:
+    parser = exact.subparsers.add_parser(
+        algo.name, help=algo.__doc__,
+    )
+    parser.set_defaults(command=exact_wrapper(algo.map))
 
 
-def test_out_name(genome_length: int, chromosomes: int,
-                  no_reads: int, read_lengths: int, edits: int) -> str:
-    fasta = test_genome_name(genome_length, chromosomes)
-    return f"{fasta}-reads-{no_reads}-{read_lengths}-{edits}.sam"
-
-
-class test_config:
-
-    def __init__(self, config: dict[str, typing.Any]) -> None:
-        self.reference = \
-            config['reference-tool'] if 'reference-tool' in config else None
-        if not self.reference:
-            print("There is no reference tool to compare results against")
-            sys.exit(1)
-
-        self.tools = config['tools'] if 'tools' in config else None
-        if not self.tools:
-            print("No tools specification in configuration file")
-            sys.exit(1)
-
-        genomes = config['genomes'] if 'genomes' in config else None
-        if not genomes:
-            print("No genomes specification in configuration file")
-            sys.exit(1)
-
-        reads = config['reads'] if 'reads' in config else None
-        if not reads:
-            print("No reads specification in configuration file")
-            sys.exit(1)
-
-        genomes_k: list[int] = get_yaml_list(genomes, 'chromosomes')
-        genomes_n: list[int] = get_yaml_list(genomes, 'length')
-        self.genomes = list(itertools.product(genomes_k, genomes_n))
-
-        reads_k: list[int] = get_yaml_list(reads, 'number')
-        reads_n: list[int] = get_yaml_list(reads, 'length')
-        reads_e: list[int] = get_yaml_list(reads, 'edits')
-        self.reads = list(itertools.product(reads_k, reads_n, reads_e))
-
-        self.genomes_reads = list(
-            itertools.product(self.genomes, self.reads)
-        )
-
-
-def test_setup(config: test_config, verbose: bool) -> None:
-    # Setting up directories
-    check_make_dir('test')
-    check_make_dir('test/data')
-    check_make_dir('test/tools')
-
-    for tool in config.tools:
-        check_make_dir(f'test/tools/{tool}')
-
-    # Simulating data
-    for k, n in config.genomes:
-        fasta_name = f"test/data/{test_genome_name(n, k)}"
-        with open(fasta_name, 'w') as f:
-            commands.simulate_genome(k, n, f)
-
-        bname = os.path.basename(fasta_name)
-        for tool in config.tools:
-            relink(f"../../data/{bname}", f'test/tools/{tool}/{bname}')
-
-    for (k, n), (num, length, e) in config.genomes_reads:
-        fasta_name = f"test/data/{test_genome_name(n, k)}"
-        fastq_name = f"test/data/{test_reads_name(n, k, num, length, e)}"
-        with (open(fasta_name, 'r') as fasta_f,
-              open(fastq_name, 'w') as fastq_f):
-            commands.simulate_reads(num, length, e, fasta_f, fastq_f)
-
-            bname = os.path.basename(fastq_name)
-            for tool in config.tools:
-                relink(f"../../data/{bname}", f'test/tools/{tool}/{bname}')
-
-
-def preprocess(config: test_config, verbose: bool) -> None:
-    for name, tool in config.tools.items():
-        if 'preprocess' in tool:
-            for k, n in config.genomes:
-                cmd = tool['preprocess'].format(
-                    genome=f'test/tools/{name}/{test_genome_name(n, k)}'
-                )
-                if verbose:
-                    print("Preprocessing:", cmd)
-                res = subprocess.run(
-                    args=cmd,
-                    shell=True,
-                    stdout=open('/dev/null', 'w'),
-                    stderr=open('/dev/null', 'w')
-                )
-                if res.returncode != 0:
-                    print("Preprocessing failed!")
-                    sys.exit(1)
-
-
-def map(config: test_config, verbose: bool) -> None:
-    for name, tool in config.tools.items():
-        for (k, n), (num, length, e) in config.genomes_reads:
-            fastaname = f'test/tools/{name}/{test_genome_name(n, k)}'
-            fastqname = f"test/tools/{name}/{test_reads_name(n, k, num, length, e)}"  # noqal: E501
-            outname = f"test/tools/{name}/{test_out_name(n, k, num, length, e)}"  # noqal: E501
-            cmd = tool['map'].format(
-                genome=fastaname,
-                reads=fastqname,
-                e=e,
-                outfile=outname
-            )
-            if verbose:
-                print("Mapping:", cmd)
-            res = subprocess.run(
-                args=cmd,
-                shell=True,
-                stdout=open('/dev/null', 'w'),
-                stderr=open('/dev/null', 'w')
-            )
-            if res.returncode != 0:
-                print("Command:", cmd)
-                print("Mapping failed!")
-                sys.exit(1)
-
-
-def sam_files(tool: str, config: test_config) -> list[str]:
+# FIXME: this goes in the commands module
+def sam_files(tool: str, config: commands.test_config) -> list[str]:
     return [
-        f"test/tools/{tool}/{test_out_name(n, k, num, length, e)}"
+        f"test/tools/{commands.tool_dir(tool)}/{commands.out_name(n, k, num, length, e)}"  # noqal: E501
         for (k, n), (num, length, e) in config.genomes_reads
     ]
+
+
+def compare_files(fname1: str, fname2: str) -> bool:
+    with (open(fname1) as f1,
+          open(fname2) as f2):
+        return set(f1.readlines()) == set(f2.readlines())
 
 
 @command(
@@ -277,15 +182,34 @@ def sam_files(tool: str, config: test_config) -> list[str]:
              type=argparse.FileType('r')),
 )
 def test(args: argparse.Namespace) -> None:
-    config = test_config(
+    config = commands.test_config(
         yaml.load(args.config.read(), Loader=yaml.SafeLoader)
     )
-    test_setup(config, args.verbose)
-    preprocess(config, args.verbose)
-    map(config, args.verbose)
+    commands.test_setup(config, args.verbose)
+    commands.test_preprocess(config, args.verbose)
+    commands.test_map(config, args.verbose)
 
+    verbose = args.verbose
     ref_sams = sam_files(config.reference, config)
-    print(ref_sams)
+    for tool in config.tools:
+        tooltest = True
+        if tool == config.reference:
+            continue
+        tool_sams = sam_files(tool, config)
+        for refsam, toolsam in zip(ref_sams, tool_sams):
+            if verbose:
+                print(f"Comparing: {refsam} vs {toolsam}", end="\t")
+            cmp_res = compare_files(refsam, toolsam)
+            tooltest &= cmp_res
+            if verbose:
+                if cmp_res:
+                    print("\u2705")
+                else:
+                    print("\u274c")
+        if tooltest:
+            print(f"Tool {tool} passed the test.")
+        else:
+            print(f"Tool {tool} failed the test.")
 
 
 def main() -> None:

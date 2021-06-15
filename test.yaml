@@ -1,4 +1,8 @@
 tools:
+  naive:
+    map: "gsa search {genome} {reads} -o {outfile} exact naive"
+  kmp:
+    map: "gsa search {genome} {reads} -o {outfile} exact kmp"
   bwt:
     preprocess: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -p {genome}"
     map: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -d {e} {genome} {reads} > {outfile}"
@@ -6,11 +10,11 @@ tools:
 reference-tool: bwt
 
 genomes:
-  length: [1000, 10000]
-  chromosomes: 20
+  length: [100, 1000]
+  chromosomes: 10
 
 reads:
-  number: 10000
-  length: 100
-  edits: [0, 1]
+  number: 10
+  length: 10
+  edits: 0
 

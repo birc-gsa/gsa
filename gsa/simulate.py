@@ -1,5 +1,6 @@
 import random
 import typing
+import sys
 
 
 def simulate_dna_string(n: int) -> str:
@@ -33,5 +34,8 @@ def sample_reads(genome: dict[str, str],
     chromosomes = tuple[str](genome.keys())
     for _ in range(k):
         chrom: str = genome[random.choice(chromosomes)]
+        if len(chrom) < n:
+            print("Chromosomes are shorter than desired read lengths.")
+            sys.exit(1)
         i = random.randrange(0, len(chrom)-n)
         yield mutate(chrom[i:i+n], e)

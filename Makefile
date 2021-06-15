@@ -4,11 +4,12 @@ init:
 	pip3 install --editable .
 
 check:
-	mypy --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs -p bsa
-	mypy --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs tests/*.py
+	mypy --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs -p gsa
 
-test: check
-	pytest --cov-report term-missing --cov=gsa tests
+# mypy --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs tests/*.py
+
+#test: check
+#	pytest --cov-report term-missing --cov=gsa tests
 
 build:
 	python3 -m build
