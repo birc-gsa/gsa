@@ -190,3 +190,41 @@ def test_map(config: test_config, verbose: bool) -> None:
             )
             if res.returncode != 0:
                 error.error(f"Mapping failed for command: {cmd}")
+
+# FIXME: this goes in the commands module
+
+
+def sam_files(tool: str, config: test_config) -> list[str]:
+    return [
+        f"test/tools/{tool_dir(tool)}/{out_name(n, k, num, length, e)}"  # noqal: E501
+        for (k, n), (num, length, e) in config.genomes_reads
+    ]
+
+
+def compare_files(fname1: str, fname2: str) -> bool:
+    with (open(fname1) as f1,
+          open(fname2) as f2):
+        return set(f1.readlines()) == set(f2.readlines())
+
+
+def test_compare(config: test_config, verbose: bool) -> None:
+    ref_sams = sam_files(config.reference, config)
+    for tool in config.tools:
+        tooltest = True
+        if tool == config.reference:
+            continue
+        tool_sams = sam_files(tool, config)
+        for refsam, toolsam in zip(ref_sams, tool_sams):
+            if verbose:
+                print(f"Comparing: {refsam} vs {toolsam}", end="\t")
+            cmp_res = compare_files(refsam, toolsam)
+            tooltest &= cmp_res
+            if verbose:
+                if cmp_res:
+                    print("\u2705")
+                else:
+                    print("\u274c")
+        if tooltest:
+            print(f"Tool {tool} passed the test.")
+        else:
+            print(f"Tool {tool} failed the test.")

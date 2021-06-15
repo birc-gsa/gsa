@@ -162,20 +162,6 @@ for algo in SEARCH_METHODS:
     parser.set_defaults(command=exact_wrapper(algo.map))
 
 
-# FIXME: this goes in the commands module
-def sam_files(tool: str, config: commands.test_config) -> list[str]:
-    return [
-        f"test/tools/{commands.tool_dir(tool)}/{commands.out_name(n, k, num, length, e)}"  # noqal: E501
-        for (k, n), (num, length, e) in config.genomes_reads
-    ]
-
-
-def compare_files(fname1: str, fname2: str) -> bool:
-    with (open(fname1) as f1,
-          open(fname2) as f2):
-        return set(f1.readlines()) == set(f2.readlines())
-
-
 @command(
     argument('config',
              help="Configuration file",
@@ -188,28 +174,7 @@ def test(args: argparse.Namespace) -> None:
     commands.test_setup(config, args.verbose)
     commands.test_preprocess(config, args.verbose)
     commands.test_map(config, args.verbose)
-
-    verbose = args.verbose
-    ref_sams = sam_files(config.reference, config)
-    for tool in config.tools:
-        tooltest = True
-        if tool == config.reference:
-            continue
-        tool_sams = sam_files(tool, config)
-        for refsam, toolsam in zip(ref_sams, tool_sams):
-            if verbose:
-                print(f"Comparing: {refsam} vs {toolsam}", end="\t")
-            cmp_res = compare_files(refsam, toolsam)
-            tooltest &= cmp_res
-            if verbose:
-                if cmp_res:
-                    print("\u2705")
-                else:
-                    print("\u274c")
-        if tooltest:
-            print(f"Tool {tool} passed the test.")
-        else:
-            print(f"Tool {tool} failed the test.")
+    commands.test_compare(config, args.verbose)
 
 
 def main() -> None:
