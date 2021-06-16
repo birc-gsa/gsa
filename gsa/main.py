@@ -6,68 +6,11 @@ import yaml
 import sys
 import os
 
+from .args import command, argument, ARGS_ROOT
 from . import error
-from . import commands
+from . import tool_tests
 from . import search_methods
-
-ParseFunc = typing.Callable[[argparse.Namespace], None]
-MapFunc = typing.Callable[[str, str, typing.TextIO, int], None]
-
-ARGS_ROOT = argparse.ArgumentParser(
-    description='''
-        Helper tool for exercises in Genome Scale Algorithms.
-        '''
-)
-ARGS_ROOT.add_argument(
-    '-v', '--verbose',
-    help="Verbose output",
-    action='store_true',
-    default=False
-)
-SUBCOMMANDS = ARGS_ROOT.add_subparsers()
-
-
-class argument:
-    flags: tuple[str, ...]
-    options: dict[str, typing.Any]
-
-    def __init__(self, *flags: str, **options: typing.Any) -> None:
-        self.flags = flags
-        self.options = options
-
-
-class command:
-    args: tuple[argument, ...]
-    parser: argparse.ArgumentParser
-    parent: argparse._SubParsersAction
-    _subparsers: typing.Optional[argparse._SubParsersAction]
-
-    def __init__(self,
-                 *args: argument,
-                 parent: argparse._SubParsersAction = SUBCOMMANDS
-                 ) -> None:
-        self.args = args
-        self.parent = parent
-        self._subparsers = None
-
-    def __call__(
-        self,
-        cmd: typing.Callable[[argparse.Namespace], None]
-    ) -> command:
-        self.cmd = cmd
-        self.parser = self.parent.add_parser(
-            cmd.__name__, description=cmd.__doc__
-        )
-        for arg in self.args:
-            self.parser.add_argument(*arg.flags, **arg.options)
-        self.parser.set_defaults(command=cmd)
-        return self
-
-    @property
-    def subparsers(self) -> argparse._SubParsersAction:
-        if self._subparsers is None:
-            self._subparsers = self.parser.add_subparsers()
-        return typing.cast(argparse._SubParsersAction, self._subparsers)
+from . import simulate as sim
 
 
 @command()
@@ -91,7 +34,7 @@ def simulate(args: argparse.Namespace) -> None:
 )
 def genome(args: argparse.Namespace) -> None:
     """Simulates genome data."""
-    commands.simulate_genome(args.k, args.n, args.out)
+    sim.simulate_genome(args.k, args.n, args.out)
 
 
 @command(
@@ -108,8 +51,8 @@ def genome(args: argparse.Namespace) -> None:
 )
 def reads(args: argparse.Namespace) -> None:
     """Simulates reads data."""
-    commands.simulate_reads(args.k, args.n, args.edits,
-                            args.genome, args.out)
+    sim.simulate_reads(args.k, args.n, args.edits,
+                       args.genome, args.out)
 
 
 def preprocess_wrapper(
@@ -203,13 +146,13 @@ for algo in search_methods.approx_search:
              type=argparse.FileType('r')),
 )
 def test(args: argparse.Namespace) -> None:
-    config = commands.test_config(
+    config = tool_tests.test_config(
         yaml.load(args.config.read(), Loader=yaml.SafeLoader)
     )
-    commands.test_setup(config, args.verbose)
-    commands.test_preprocess(config, args.verbose)
-    commands.test_map(config, args.verbose)
-    commands.test_compare(config, args.verbose)
+    tool_tests.test_setup(config, args.verbose)
+    tool_tests.test_preprocess(config, args.verbose)
+    tool_tests.test_map(config, args.verbose)
+    tool_tests.test_compare(config, args.verbose)
 
 
 def main() -> None:

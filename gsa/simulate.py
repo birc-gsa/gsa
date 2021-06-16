@@ -2,16 +2,20 @@ import random
 import typing
 import sys
 
+from . import fasta, fastq
+
 
 def simulate_dna_string(n: int) -> str:
     return ''.join(random.choice("acbt") for _ in range(n))
 
 
-def simulate_genome(k: int, n: int) -> dict[str, str]:
+def simulate_genome(k: int, n: int,
+                    fastafile: typing.TextIO
+                    ) -> None:
     genome: dict[str, str] = {}
     for i in range(k):
         genome[f"chrom{i}"] = simulate_dna_string(n)
-    return genome
+    fasta.write_fasta(fastafile, genome)
 
 
 def mutate(x: str, e: int) -> str:
@@ -39,3 +43,14 @@ def sample_reads(genome: dict[str, str],
             sys.exit(1)
         i = random.randrange(0, len(chrom)-n)
         yield mutate(chrom[i:i+n], e)
+
+
+def simulate_reads(k: int, n: int, edits: int,
+                   fastafile: typing.TextIO,
+                   fastqfile: typing.TextIO
+                   ) -> None:
+    genome = fasta.read_fasta(fastafile)
+    fastq.write_fastq(
+        fastqfile,
+        sample_reads(genome, k, n, edits)
+    )

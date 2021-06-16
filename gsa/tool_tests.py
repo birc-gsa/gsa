@@ -5,28 +5,8 @@ import itertools
 import subprocess
 import urllib.parse
 
-from . import fasta
-from . import fastq
 from . import simulate
 from . import error
-
-
-def simulate_genome(k: int, n: int,
-                    fastafile: typing.TextIO
-                    ) -> None:
-    genome = simulate.simulate_genome(k, n)
-    fasta.write_fasta(fastafile, genome)
-
-
-def simulate_reads(k: int, n: int, edits: int,
-                   fastafile: typing.TextIO,
-                   fastqfile: typing.TextIO
-                   ) -> None:
-    genome = fasta.read_fasta(fastafile)
-    fastq.write_fastq(
-        fastqfile,
-        simulate.sample_reads(genome, k, n, edits)
-    )
 
 
 def get_yaml_list(d: dict[str, typing.Any], name: str) -> list[typing.Any]:
@@ -120,7 +100,7 @@ def test_setup(config: test_config, verbose: bool) -> None:
     for k, n in config.genomes:
         fasta_name = f"test/data/{genome_name(n, k)}"
         with open(fasta_name, 'w') as f:
-            simulate_genome(k, n, f)
+            simulate.simulate_genome(k, n, f)
 
         bname = os.path.basename(fasta_name)
         for tool in config.tools:
@@ -132,7 +112,7 @@ def test_setup(config: test_config, verbose: bool) -> None:
         fastq_name = f"test/data/{reads_name(n, k, num, length, e)}"
         with (open(fasta_name, 'r') as fasta_f,
               open(fastq_name, 'w') as fastq_f):
-            simulate_reads(num, length, e, fasta_f, fastq_f)
+            simulate.simulate_reads(num, length, e, fasta_f, fastq_f)
 
             bname = os.path.basename(fastq_name)
             for tool in config.tools:
@@ -167,7 +147,7 @@ def test_map(config: test_config, verbose: bool) -> None:
         for (k, n), (num, length, e) in config.genomes_reads:
             fastaname = f'test/tools/{tool_dir(name)}/{genome_name(n, k)}'
             fastqname = f"test/tools/{tool_dir(name)}/{reads_name(n, k, num, length, e)}"  # noqal: E501
-            outname = f"test/tools/{tool_dir(name)}/{out_name(n, k, num, length, e)}"      # noqal: E501
+            outname = f"test/tools/{name}/{out_name(n, k, num, length, e)}"      # noqal: E501
 
             if not os.path.isfile(fastaname):
                 error.error(f"Couldn't find fasta file {fastaname}")
@@ -190,8 +170,6 @@ def test_map(config: test_config, verbose: bool) -> None:
             )
             if res.returncode != 0:
                 error.error(f"Mapping failed for command: {cmd}")
-
-# FIXME: this goes in the commands module
 
 
 def sam_files(tool: str, config: test_config) -> list[str]:

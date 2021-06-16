@@ -6,7 +6,7 @@ tools:
     preprocess: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -p {genome}"
     map: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -d {e} {genome} {reads} > {outfile}"
 
-reference-tool: cbwt
+reference-tool: pystr-BWT
 
 genomes:
   length: [100, 1000]
