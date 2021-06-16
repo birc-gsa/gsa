@@ -10,6 +10,9 @@ from . import error
 from . import commands
 from . import search_methods
 
+ParseFunc = typing.Callable[[argparse.Namespace], None]
+MapFunc = typing.Callable[[str, str, typing.TextIO, int], None]
+
 ARGS_ROOT = argparse.ArgumentParser(
     description='''
         Helper tool for exercises in Genome Scale Algorithms.
@@ -109,24 +112,33 @@ def reads(args: argparse.Namespace) -> None:
                             args.genome, args.out)
 
 
-SEARCH_METHODS = [
-    cls for cls in vars(search_methods).values()
-    if isinstance(cls, type)
-    and issubclass(cls, search_methods.Search)
-    and cls is not search_methods.Search
-]
-
-
-def exact_wrapper(
-    f: typing.Callable[[str, str, typing.TextIO, int], None]
+def preprocess_wrapper(
+    f: typing.Callable[[str], None]
 ) -> typing.Callable[[argparse.Namespace], None]:
-    def search(args: argparse.Namespace) -> None:
+    def preprocess(args: argparse.Namespace) -> None:
         if not os.access(args.genome, os.R_OK):
             error.error(f"Can't open genome file {args.genome}")
-        if not os.access(args.reads, os.R_OK):
-            error.error(f"Can't open fastq file {args.reads}")
-        f(args.genome, args.reads, args.out, 0)
-    return search
+        f(args.genome)
+    return preprocess
+
+
+@command(
+    argument("genome", help="Genome to preprocess (FASTA file).",
+             type=str)
+)
+def preprocess(args: argparse.Namespace) -> None:
+    """Preprocess a genome.
+
+    Select the algorithm to preprocess for."""
+    preprocess.parser.print_usage()
+
+
+# FIXME: preprocessing commands
+for algo in search_methods.preprocess:
+    parser = preprocess.subparsers.add_parser(
+        algo.__name__.lower(), help=algo.__doc__,
+    )
+    parser.set_defaults(command=algo)
 
 
 @command(
@@ -155,43 +167,34 @@ def exact(args: argparse.Namespace) -> None:
     """Run an exact pattern matching algorithm.
 
     Select the algorithm to run."""
-    search.parser.print_usage()
+    exact.parser.print_usage()
 
 
-for algo in SEARCH_METHODS:
+for algo in search_methods.exact_search:
     parser = exact.subparsers.add_parser(
-        algo.name, help=algo.__doc__,
+        algo.__name__.lower(), help=algo.__doc__,
     )
-    parser.set_defaults(command=exact_wrapper(algo.map))
+    parser.set_defaults(command=algo)
 
 
 @command(
-    argument("genome", help="Genome to preprocess (FASTA file).",
-             type=str)
+    argument("-e", "--edits",
+             help="Number of edits to allow (default 1).",
+             type=int, default=1),
+    parent=search.subparsers
 )
-def preprocess(args: argparse.Namespace) -> None:
-    """Preprocess a genome.
+def approx(args: argparse.Namespace) -> None:
+    """Run an approximative pattern matching algorithm.
 
-    Select the algorithm to preprocess for."""
-    preprocess.parser.print_usage()
-
-
-def preprocess_wrapper(
-    f: typing.Callable[[str], None]
-) -> typing.Callable[[argparse.Namespace], None]:
-    def preprocess(args: argparse.Namespace) -> None:
-        if not os.access(args.genome, os.R_OK):
-            error.error(f"Can't open genome file {args.genome}")
-        f(args.genome)
-    return preprocess
+    Select the algorithm to run."""
+    approx.parser.print_usage()
 
 
-for algo in SEARCH_METHODS:
-    if algo.can_preprocess:
-        parser = preprocess.subparsers.add_parser(
-            algo.name, help=algo.__doc__,
-        )
-        parser.set_defaults(command=preprocess_wrapper(algo.preprocess))
+for algo in search_methods.approx_search:
+    parser = approx.subparsers.add_parser(
+        algo.__name__.lower(), help=algo.__doc__,
+    )
+    parser.set_defaults(command=algo)
 
 
 @command(

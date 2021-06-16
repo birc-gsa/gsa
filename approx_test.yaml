@@ -1,12 +1,8 @@
 tools:
-  naive:
-    map: "gsa search {genome} {reads} -o {outfile} exact naive"
-  kmp:
-    map: "gsa search {genome} {reads} -o {outfile} exact kmp"
-  bwt:
-    preprocess: "gsa preprocess {genome} bwt"
-    map: "gsa search {genome} {reads} -o {outfile} exact bwt"
-  cbwt:
+  pystr-BWT:
+    preprocess: "gsa preprocess {genome} approx_bwt"
+    map: "gsa search {genome} {reads} -o {outfile} approx -e {e} bwt"
+  cBWT:
     preprocess: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -p {genome}"
     map: "/Users/mailund/Projects/stralg/tools/readmappers/bwt_readmapper/bwt_readmapper -d {e} {genome} {reads} > {outfile}"
 
@@ -19,5 +15,5 @@ genomes:
 reads:
   number: 10
   length: 10
-  edits: 0
+  edits: [1, 2]
 

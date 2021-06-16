@@ -1,6 +1,7 @@
 from __future__ import annotations
-from mypy_extensions import (Arg, DefaultArg)
+from mypy_extensions import Arg
 
+import argparse
 import typing
 import pickle
 import pystr.alphabet
@@ -13,24 +14,7 @@ from . import fastq
 from . import sam
 from . import error
 
-
-class Search:
-    name: str = "<abstract>"
-    can_preprocess: bool = False
-    can_approx: bool = False
-
-    @staticmethod
-    def preprocess(fastaname: str) -> None:
-        ...
-
-    @staticmethod
-    def map(fastaname: str,
-            fastqname: str,
-            out: typing.TextIO,
-            edits: int
-            ) -> None:
-        ...
-
+T = typing.TypeVar('T')
 
 # I'm telling flake8 to shut up a few places here, because it
 # moronically complains that the strings in Arg() are undefined
@@ -39,128 +23,212 @@ class Search:
 PystrExactSearchF = typing.Callable[
     [Arg(str, "x"),      # noqal F821
      Arg(str, "p")],     # noqal F821
-    typing.Iterator[int]]
+    typing.Iterator[int]
+]
 
+PystrExactPreprocessedF = typing.Callable[
+    [Arg(str, "p")],   # noqal F821
+    typing.Iterator[int]
+]
 
-GSASearchF = typing.Callable[
-    [Arg(str, "fastaname"),      # noqal F821
-     Arg(str, "fastqname"),      # noqal F821
-     Arg(typing.TextIO, "out"),  # noqal F821
-     DefaultArg(int, "edits")],  # noqal F821
-    None]
+PystrApproxPreprocessedF = typing.Callable[
+    [Arg(str, "p"),        # noqal F821
+     Arg(int, "edits")],   # noqal F821
+    typing.Iterator[tuple[int, str]]
+]
 
-PystrPreprocessedGenome = dict[
-    str, typing.Callable[[str], typing.Iterator[int]]
+PystrPreprocessF = typing.Callable[
+    [Arg(str, "x")],     # noqal F821
+    typing.Any
+]
+
+PystrReadExactPreprocessF = typing.Callable[
+    [typing.Any],     # noqal F821
+    PystrExactPreprocessedF
+]
+
+PystrReadApproxPreprocessF = typing.Callable[
+    [typing.Any],     # noqal F821
+    PystrApproxPreprocessedF
+]
+
+GSACommandF = typing.Callable[
+    [Arg(argparse.Namespace, "args")],      # noqal F821
+    None
 ]
 
 
-def exact_search_wrapper(search: PystrExactSearchF) -> GSASearchF:
-    def wrap(fastaname: str,
-             fastqname: str,
-             out: typing.TextIO,
-             edits: int = 0
-             ) -> None:
-        with open(fastaname, 'r') as f:
+def check_preprocess_input(args: argparse.Namespace) -> None:
+    if not os.access(args.genome, os.R_OK):
+        error.error(f"Can't open genome file {args.genome}")
+
+
+def preprocess_wrapper(prep: PystrPreprocessF) -> GSACommandF:
+    def wrap(args: argparse.Namespace) -> None:
+        check_preprocess_input(args)
+        preproc_name = args.genome + '.' + prep.__name__
+        if os.path.isfile(preproc_name) and \
+                not os.access(preproc_name, os.W_OK):
+            error.error(f"Can't open preprocessing file {preproc_name}")
+
+        with open(args.genome, 'r') as f:
             genome = fasta.read_fasta(f)
-        with open(fastqname, 'r') as f:
+        preprocessed = {
+            chrname: prep(seq) for chrname, seq in genome.items()
+        }
+        with open(preproc_name, 'wb') as preprocfile:
+            pickle.dump(preprocessed, preprocfile)
+
+    wrap.__name__ = prep.__name__
+    wrap.__doc__ = prep.__name__
+    return wrap
+
+
+def check_map_input(args: argparse.Namespace) -> None:
+    if not os.access(args.genome, os.R_OK):
+        error.error(f"Can't open genome file {args.genome}")
+    if not os.access(args.reads, os.R_OK):
+        error.error(f"Can't open fastq file {args.reads}")
+
+
+def exact_search_wrapper(search: PystrExactSearchF) -> GSACommandF:
+    def wrap(args: argparse.Namespace) -> None:
+        check_map_input(args)
+        with open(args.genome, 'r') as f:
+            genome = fasta.read_fasta(f)
+        with open(args.reads, 'r') as f:
             for readname, read, qual in fastq.scan_reads(f):
                 for chrname, seq in genome.items():
                     for pos in search(seq, read):
                         sam.sam_record(
-                            out,
+                            args.out,
                             readname, chrname,
                             pos, f'{len(read)}M',
                             read, qual
                         )
+    wrap.__name__ = search.__name__
+    wrap.__doc__ = search.__doc__
     return wrap
 
 
-class Naive(Search):
-    """The naive quadratic time algorithm."""
-    name = "naive"
-    map = exact_search_wrapper(pystr.exact.naive)
+def read_or_compute_preprocessed(
+    genome: str,
+    prep: PystrPreprocessF,
+    search_wrap: typing.Callable[[typing.Any], T]
+) -> dict[str, T]:
+    preproc_name = genome + '.' + prep.__name__
+    if os.path.isfile(preproc_name) and os.access(preproc_name, os.R_OK):
+        # Unpickle the preprocessed file
+        with open(preproc_name, 'rb') as preproc_file:
+            preproc_table = pickle.load(preproc_file)
+    else:  # we need to do the preprocessing now
+        with open(genome, 'r') as f:
+            chromosomes = fasta.read_fasta(f)
+        preproc_table = {
+            chrname: prep(seq) for chrname, seq in chromosomes.items()
+        }
+    return {
+        chrname: search_wrap(x) for chrname, x in preproc_table.items()
+    }
 
 
-class KMP(Search):
-    """The Knuth-Morris-Pratt linear-time algorithm."""
-    name = "kmp"
-    map = exact_search_wrapper(pystr.exact.kmp)
+def exact_search_preprocess_wrapper(
+    name: str, doc: str,
+    prep: PystrPreprocessF,
+    search_wrap: PystrReadExactPreprocessF
+) -> GSACommandF:
+    def wrap(args: argparse.Namespace) -> None:
+        check_map_input(args)
 
-
-class Border(Search):
-    """The border-array linear-time algorithm."""
-    name = "border"
-    map = exact_search_wrapper(pystr.exact.border)
-
-
-class BMH(Search):
-    """The Boyer-Moore-Horspool linear-time algorithm."""
-    name = "bmh"
-    map = exact_search_wrapper(pystr.exact.bmh)
-
-
-class BWT(Search):
-    name = "bwt"
-    can_preprocess = True
-
-    @staticmethod
-    def preprocess(fastaname: str) -> None:
-
-        preproc_name = f"{fastaname}.bwt_tables"
-        if os.path.isfile(preproc_name) and \
-                not os.access(preproc_name, os.W_OK):
-            error.error(f"Can't open genome file {preproc_name}")
-
-        preprocessed: dict[
-            str,
-            tuple[pystr.alphabet.Alphabet,
-                  list[int],
-                  pystr.bwt.CTable,
-                  pystr.bwt.OTable]
-        ] = {}
-        with open(fastaname, 'r') as f:
-            genome = fasta.read_fasta(f)
-            for chrname, seq in genome.items():
-                bwt, alpha, sa = pystr.bwt.burrows_wheeler_transform(seq)
-                ctab = pystr.bwt.CTable(bwt, len(alpha))
-                otab = pystr.bwt.OTable(bwt, len(alpha))
-                preprocessed[chrname] = (alpha, sa, ctab, otab)
-
-        with open(preproc_name, 'wb') as preprocfile:
-            pickle.dump(preprocessed, preprocfile)
-
-    @staticmethod
-    def map(fastaname: str,
-            fastqname: str,
-            out: typing.TextIO,
-            edits: int
-            ) -> None:
-
-        preprocessed: PystrPreprocessedGenome = {}
-
-        preproc_name = f"{fastaname}.bwt_tables"
-        if os.access(preproc_name, os.R_OK):
-            with open(preproc_name, 'rb') as preproc_file:
-                preproc_tables = pickle.load(preproc_file)
-                for chrname, (alpha, sa, ctab, otab) in preproc_tables.items():
-                    preprocessed[chrname] = pystr.bwt.searcher_from_tables(
-                        alpha, sa, ctab, otab
-                    )
-        else:
-            # We don't have preprocessed info, so we build tables from
-            # scratch
-            with open(fastaname, 'r') as f:
-                genome = fasta.read_fasta(f)
-            for chrname, seq in genome.items():
-                preprocessed[chrname] = pystr.bwt.preprocess(seq)
-
-        with open(fastqname, 'r') as f:
+        searchers = read_or_compute_preprocessed(
+            args.genome, prep, search_wrap
+        )
+        with open(args.reads, 'r') as f:
             for readname, read, qual in fastq.scan_reads(f):
-                for chrname, search in preprocessed.items():
+                for chrname, search in searchers.items():
                     for pos in search(read):
                         sam.sam_record(
-                            out,
+                            args.out,
                             readname, chrname,
                             pos, f'{len(read)}M',
                             read, qual
                         )
+    wrap.__name__ = name
+    wrap.__doc__ = doc
+    return wrap
+
+
+def approx_search_preprocess_wrapper(
+    name: str, doc: str,
+    prep: PystrPreprocessF,
+    search_wrap: PystrReadApproxPreprocessF
+) -> GSACommandF:
+    def wrap(args: argparse.Namespace) -> None:
+        check_map_input(args)
+
+        searchers = read_or_compute_preprocessed(
+            args.genome, prep, search_wrap
+        )
+        with open(args.reads, 'r') as f:
+            for readname, read, qual in fastq.scan_reads(f):
+                for chrname, search in searchers.items():
+                    for pos, cigar in search(read, args.edits):
+                        sam.sam_record(
+                            args.out,
+                            readname, chrname,
+                            pos, cigar,
+                            read, qual
+                        )
+    wrap.__name__ = name
+    wrap.__doc__ = doc
+    return wrap
+
+
+def exact_bwt(x: str) -> typing.Any:
+    """Preprocessing for the exact BWT search."""
+    print("PREPROCESSING BWT")
+    bwt, alpha, sa = pystr.bwt.burrows_wheeler_transform(x)
+    ctab = pystr.bwt.CTable(bwt, len(alpha))
+    otab = pystr.bwt.OTable(bwt, len(alpha))
+    return alpha, sa, ctab, otab
+
+
+def exact_bwt_search_wrapper(tables: typing.Any) -> PystrExactPreprocessedF:
+    return pystr.bwt.exact_searcher_from_tables(*tables)
+
+
+def approx_bwt(x: str) -> typing.Any:
+    """Preprocessing for the approximative BWT search."""
+    bwt, alpha, sa = pystr.bwt.burrows_wheeler_transform(x)
+    ctab = pystr.bwt.CTable(bwt, len(alpha))
+    otab = pystr.bwt.OTable(bwt, len(alpha))
+    # FIXME: ad rotab
+    return alpha, sa, ctab, otab
+
+
+def approx_bwt_search_wrapper(tables: typing.Any) -> PystrApproxPreprocessedF:
+    return pystr.bwt.approx_searcher_from_tables(*tables)
+
+
+preprocess: list[GSACommandF] = [
+    preprocess_wrapper(exact_bwt),
+    preprocess_wrapper(approx_bwt)
+]
+
+exact_search: list[GSACommandF] = [
+    exact_search_wrapper(pystr.exact.naive),
+    exact_search_wrapper(pystr.exact.kmp),
+    exact_search_wrapper(pystr.exact.border),
+    exact_search_wrapper(pystr.exact.bmh),
+    exact_search_preprocess_wrapper(
+        'bwt',
+        'Burrows-Wheeler FM-index search',
+        exact_bwt, exact_bwt_search_wrapper)
+]
+
+approx_search: list[GSACommandF] = [
+    approx_search_preprocess_wrapper(
+        'bwt',
+        'Burrows-Wheeler FM-index search',
+        approx_bwt, approx_bwt_search_wrapper)
+]

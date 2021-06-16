@@ -1,0 +1,24 @@
+tools:
+  Naive:
+    map: "gsa search {genome} {reads} -o {outfile} exact naive"
+  Border:
+    map: "gsa search {genome} {reads} -o {outfile} exact border"
+  KMP:
+    map: "gsa search {genome} {reads} -o {outfile} exact kmp"
+  BMH:
+    map: "gsa search {genome} {reads} -o {outfile} exact bmh"
+  BWT:
+    preprocess: "gsa preprocess {genome} exact_bwt"
+    map: "gsa search {genome} {reads} -o {outfile} exact bwt"
+  
+reference-tool: naive
+
+genomes:
+  length: [100, 1000]
+  chromosomes: 10
+
+reads:
+  number: 10
+  length: 10
+  edits: 0
+
