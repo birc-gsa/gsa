@@ -186,11 +186,7 @@ def approx_search_preprocess_wrapper(
 
 def exact_bwt(x: str) -> typing.Any:
     """Preprocessing for the exact BWT search."""
-    print("PREPROCESSING BWT")
-    bwt, alpha, sa = pystr.bwt.burrows_wheeler_transform(x)
-    ctab = pystr.bwt.CTable(bwt, len(alpha))
-    otab = pystr.bwt.OTable(bwt, len(alpha))
-    return alpha, sa, ctab, otab
+    return pystr.bwt.preprocess_exact(x)
 
 
 def exact_bwt_search_wrapper(tables: typing.Any) -> PystrExactPreprocessedF:
@@ -199,11 +195,7 @@ def exact_bwt_search_wrapper(tables: typing.Any) -> PystrExactPreprocessedF:
 
 def approx_bwt(x: str) -> typing.Any:
     """Preprocessing for the approximative BWT search."""
-    bwt, alpha, sa = pystr.bwt.burrows_wheeler_transform(x)
-    ctab = pystr.bwt.CTable(bwt, len(alpha))
-    otab = pystr.bwt.OTable(bwt, len(alpha))
-    # FIXME: ad rotab
-    return alpha, sa, ctab, otab
+    return pystr.bwt.preprocess_approx(x)
 
 
 def approx_bwt_search_wrapper(tables: typing.Any) -> PystrApproxPreprocessedF:
