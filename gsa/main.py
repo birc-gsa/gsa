@@ -12,10 +12,12 @@ from . import tool_tests, tool_perf
 from . import search_methods
 from . import simulate as sim
 
-from .show import exact as _exact  # noqal This is just for the side-effects
-from .show import skew as _skew    # noqal This is just for the side-effects
-from .show import lcp as _lcp      # noqal This is just for the side-effects
-from .show import bwt as _bwt      # noqal This is just for the side-effects
+from .show import exact as _exact    # noqal This is just for the side-effects
+from .show import skew as _skew      # noqal This is just for the side-effects
+from .show import lcp as _lcp        # noqal This is just for the side-effects
+from .show import bwt as _bwt        # noqal This is just for the side-effects
+from .show import suffixtree as _st  # noqal This is just for the side-effects
+from .show import trie as _trie      # noqal This is just for the side-effects
 
 
 @command()

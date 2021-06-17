@@ -49,14 +49,14 @@ class command:
         self._cmd = None
 
     def __call__(self, cmd: CommandHandler) -> command:
-        self._cmd = cmd
-        self._parser = self._parent.add_parser(
+        parser = self._parent.add_parser(
             cmd.__name__, description=cmd.__doc__
         )
-        assert self._parser is not None
         for arg in self._args:
-            self._parser.add_argument(*arg.flags, **arg.options)
-        self._parser.set_defaults(command=cmd)
+            parser.add_argument(*arg.flags, **arg.options)
+        parser.set_defaults(command=cmd)
+        self._cmd = cmd
+        self._parser = parser
         return self
 
     @property
@@ -66,9 +66,8 @@ class command:
 
     @property
     def subparsers(self) -> argparse._SubParsersAction:
-        assert self._parser is not None
         if self._subparsers is None:
-            self._subparsers = self._parser.add_subparsers()
+            self._subparsers = self.parser.add_subparsers()
         return self._subparsers
 
     @property

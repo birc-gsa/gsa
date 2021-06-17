@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import argparse
 from typing import Callable
 
@@ -10,6 +8,9 @@ from pystr.suffixtree import \
     lcp_st_construction
 from pystr.lcp import lcp_from_sa
 from pystr import sais
+
+from . import show
+from ..args import command, argument
 
 STConstructor = Callable[[str], SuffixTree]
 
@@ -27,17 +28,17 @@ algos: dict[str, STConstructor] = {
 }
 
 
-def show_suffixtree() -> None:
-    parser = argparse.ArgumentParser(
-        description='Display a suffix tree.')
-    parser.add_argument('x', metavar='x', type=str,
-                        help='string to build the suffix tree from.')
-    parser.add_argument('--algo',
-                        default='mccreight',
-                        nargs='?',
-                        choices=algos.keys(),
-                        help='construction ')
-
-    args = parser.parse_args()
+@command(
+    argument('x', metavar='x', type=str,
+             help='string to build the suffix tree from.'),
+    argument('--algo',
+             default='mccreight',
+             nargs='?',
+             choices=algos.keys(),
+             help='construction '),
+    parent=show.subparsers
+)
+def suffixtree(args: argparse.Namespace) -> None:
+    """Display a suffix tree."""
     st = algos[args.algo](args.x)
     print(st.to_dot())

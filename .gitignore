@@ -132,3 +132,7 @@ dmypy.json
 # Test and performance directories
 __TEST__
 __PERF__.vscode
+__PERF__
+.vscode
+.watchmanconfig
+.pyre_configuration
