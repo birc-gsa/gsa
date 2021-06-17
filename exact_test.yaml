@@ -14,11 +14,11 @@ tools:
 reference-tool: naive
 
 genomes:
-  length: [100, 1000]
+  length: [100, 500, 1000]
   chromosomes: 10
 
 reads:
   number: 10
-  length: 10
+  length: [10, 50]
   edits: 0
 
