@@ -8,7 +8,7 @@ import os
 
 from .args import command, argument, ARGS_ROOT
 from . import messages
-from . import tool_tests
+from . import tool_tests, tool_perf
 from . import search_methods
 from . import simulate as sim
 
@@ -140,18 +140,52 @@ for algo in search_methods.approx_search:
 
 
 @command(
+    argument("-o", "--out",
+             help="Report file (default stdout).",
+             type=argparse.FileType('w'), default=sys.stdout),
     argument('config',
              help="Configuration file",
              type=argparse.FileType('r')),
 )
 def test(args: argparse.Namespace) -> None:
+    """Run a test by comparing the output from the tools specified
+    in the configuration file."""
     config = tool_tests.test_config(
         yaml.load(args.config.read(), Loader=yaml.SafeLoader)
     )
     tool_tests.test_setup(config, args.verbose)
     tool_tests.test_preprocess(config, args.verbose)
     tool_tests.test_map(config, args.verbose)
-    tool_tests.test_compare(config, args.verbose)
+    tool_tests.test_compare(config, args.out, args.verbose)
+
+
+@command(
+    argument("-n", "--repeats",
+             help="Number of measurements to make per run (default 5).",
+             type=int, default=5),
+    argument("-p", "--preprocess-report",
+             help="Report file for preprocessing (default stdout).",
+             type=argparse.FileType('w'), default=sys.stdout),
+    argument("-m", "--mapping-report",
+             help="Report file for mapping (default stdout).",
+             type=argparse.FileType('w'), default=sys.stdout),
+    argument('config',
+             help="Configuration file",
+             type=argparse.FileType('r')),
+)
+def perf(args: argparse.Namespace) -> None:
+    """Run a preformance comparison of the tools specified
+    in the configuration file."""
+    config = tool_perf.perf_config(
+        yaml.load(args.config.read(), Loader=yaml.SafeLoader)
+    )
+    tool_perf.perf_setup(config, args.verbose)
+    tool_perf.perf_preprocess(
+        config, args.repeats, args.preprocess_report, args.verbose
+    )
+    tool_perf.perf_map(
+        config, args.repeats, args.mapping_report, args.verbose
+    )
 
 
 def main() -> None:

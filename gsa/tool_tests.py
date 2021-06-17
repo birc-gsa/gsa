@@ -172,7 +172,9 @@ def test_tool(ref_sams: list[str],
     return results
 
 
-def test_compare(config: test_config, verbose: bool) -> None:
+def test_compare(config: test_config,
+                 report_out: typing.TextIO,
+                 verbose: bool) -> None:
     ref_sams = sam_files(config.reference, config)
     res: dict[str, list[bool]] = {}
     for tool in config.tools:
@@ -206,4 +208,4 @@ def test_compare(config: test_config, verbose: bool) -> None:
         row["edits"] = edits
         for tool, bits in res.items():
             row[tool] = "OK" if bits[i] else "FAIL"
-    print(res_tbl)
+    print(res_tbl, file=report_out)
