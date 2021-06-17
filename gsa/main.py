@@ -7,7 +7,7 @@ import sys
 import os
 
 from .args import command, argument, ARGS_ROOT
-from . import error
+from . import messages
 from . import tool_tests
 from . import search_methods
 from . import simulate as sim
@@ -60,7 +60,7 @@ def preprocess_wrapper(
 ) -> typing.Callable[[argparse.Namespace], None]:
     def preprocess(args: argparse.Namespace) -> None:
         if not os.access(args.genome, os.R_OK):
-            error.error(f"Can't open genome file {args.genome}")
+            messages.error(f"Can't open genome file {args.genome}")
         f(args.genome)
     return preprocess
 
@@ -76,7 +76,6 @@ def preprocess(args: argparse.Namespace) -> None:
     preprocess.parser.print_usage()
 
 
-# FIXME: preprocessing commands
 for algo in search_methods.preprocess:
     parser = preprocess.subparsers.add_parser(
         algo.__name__.lower(), help=algo.__doc__,

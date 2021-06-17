@@ -12,7 +12,7 @@ import os
 from . import fasta
 from . import fastq
 from . import sam
-from . import error
+from . import messages
 
 T = typing.TypeVar('T')
 
@@ -60,7 +60,7 @@ GSACommandF = typing.Callable[
 
 def check_preprocess_input(args: argparse.Namespace) -> None:
     if not os.access(args.genome, os.R_OK):
-        error.error(f"Can't open genome file {args.genome}")
+        messages.error(f"Can't open genome file {args.genome}")
 
 
 def preprocess_wrapper(prep: PystrPreprocessF) -> GSACommandF:
@@ -69,7 +69,7 @@ def preprocess_wrapper(prep: PystrPreprocessF) -> GSACommandF:
         preproc_name = args.genome + '.' + prep.__name__
         if os.path.isfile(preproc_name) and \
                 not os.access(preproc_name, os.W_OK):
-            error.error(f"Can't open preprocessing file {preproc_name}")
+            messages.error(f"Can't open preprocessing file {preproc_name}")
 
         with open(args.genome, 'r') as f:
             genome = fasta.read_fasta(f)
@@ -86,9 +86,9 @@ def preprocess_wrapper(prep: PystrPreprocessF) -> GSACommandF:
 
 def check_map_input(args: argparse.Namespace) -> None:
     if not os.access(args.genome, os.R_OK):
-        error.error(f"Can't open genome file {args.genome}")
+        messages.error(f"Can't open genome file {args.genome}")
     if not os.access(args.reads, os.R_OK):
-        error.error(f"Can't open fastq file {args.reads}")
+        messages.error(f"Can't open fastq file {args.reads}")
 
 
 def exact_search_wrapper(search: PystrExactSearchF) -> GSACommandF:
