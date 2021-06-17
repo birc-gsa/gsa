@@ -1,5 +1,9 @@
 from __future__ import annotations
 import re
+import colorama
+
+colorama.init()  # This is to make colours work on Windows
+
 
 RESET = "\u001b[0m"
 

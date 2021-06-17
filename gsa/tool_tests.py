@@ -1,6 +1,7 @@
 import typing
 import os
 import os.path
+import sys
 import itertools
 import subprocess
 
@@ -8,6 +9,7 @@ from . import simulate
 from . import messages
 from . import utils
 from .vis import Table, ColSpec
+from .vis.cols import green, red, plain
 
 
 class test_config:
@@ -183,6 +185,9 @@ def test_compare(config: test_config,
         tool_sams = sam_files(tool, config)
         res[tool] = test_tool(ref_sams, tool_sams, verbose)
 
+    ok_col = green if report_out == sys.stdout else plain
+    err_col = red if report_out == sys.stdout else plain
+
     tool_names = list(res.keys())
     res_tbl = Table(
         ColSpec("no_chrom", right_pad=", "),
@@ -207,5 +212,5 @@ def test_compare(config: test_config,
         row["read_len"] = read_len
         row["edits"] = edits
         for tool, bits in res.items():
-            row[tool] = "OK" if bits[i] else "FAIL"
+            row[tool] = ok_col("OK") if bits[i] else err_col("FAIL")
     print(res_tbl, file=report_out)

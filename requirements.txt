@@ -9,5 +9,7 @@ setuptools
 build
 
 # stuff we actually need for the functionality
+colorama
+types-colorama
 pyyaml
 git+https://github.com/mailund/pystr#egg=pystr
