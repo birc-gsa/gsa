@@ -9,14 +9,20 @@ def get_yaml_list(d: dict[str, typing.Any], name: str) -> list[typing.Any]:
     if name not in d:
         print(f"Warning: missing yaml field {name}")
         return []
-    return d[name] if isinstance(d[name], list) else [d[name]]
+    if isinstance(d[name], list):
+        # I don't know why the cast is necessary. It should be
+        # obvious from the isinstance check. But mypy wants it.
+        return typing.cast(list[typing.Any], d[name])
+    else:
+        return [d[name]]
 
 
-def check_make_dir(dirname: str) -> None:
+def check_make_dir(dirname: str, verbose: bool) -> None:
     if os.path.isfile(dirname):
         messages.error(f"File '{dirname}' exists and isn't a directory")
     if not os.path.isdir(dirname):
-        messages.message(f"Creating directory '{dirname}'")
+        if verbose:
+            messages.message(f"Creating directory '{dirname}'")
         os.mkdir(dirname)
 
 

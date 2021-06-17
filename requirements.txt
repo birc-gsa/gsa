@@ -1,8 +1,13 @@
+# Checking and testing
 mypy
 pytest
 pytest-mock
 pytest-cov
+
+# making a package
 setuptools
 build
+
+# stuff we actually need for the functionality
 pyyaml
 git+https://github.com/mailund/pystr#egg=pystr

@@ -47,27 +47,27 @@ class test_config:
 
 def test_setup(config: test_config, verbose: bool) -> None:
     # Setting up directories
-    utils.check_make_dir('test')
-    utils.check_make_dir('test/data')
-    utils.check_make_dir('test/tools')
+    utils.check_make_dir('__TEST__', verbose)
+    utils.check_make_dir('__TEST__/data', verbose)
+    utils.check_make_dir('__TEST__/tools', verbose)
 
     for tool in config.tools:
-        utils.check_make_dir(f'test/tools/{utils.tool_dir(tool)}')
+        utils.check_make_dir(f'__TEST__/tools/{utils.tool_dir(tool)}', verbose)
 
     # Simulating data
     for k, n in config.genomes:
-        fasta_name = f"test/data/{utils.genome_name(n, k)}"
+        fasta_name = f"__TEST__/data/{utils.genome_name(n, k)}"
         with open(fasta_name, 'w') as f:
             simulate.simulate_genome(k, n, f)
 
         bname = os.path.basename(fasta_name)
         for tool in config.tools:
             utils.relink(f"../../data/{bname}",
-                         f'test/tools/{utils.tool_dir(tool)}/{bname}')
+                         f'__TEST__/tools/{utils.tool_dir(tool)}/{bname}')
 
     for (k, n), (num, length, e) in config.genomes_reads:
-        fasta_name = f"test/data/{utils.genome_name(n, k)}"
-        fastq_name = f"test/data/{utils.reads_name(n, k, num, length, e)}"
+        fasta_name = f"__TEST__/data/{utils.genome_name(n, k)}"
+        fastq_name = f"__TEST__/data/{utils.reads_name(n, k, num, length, e)}"
         with (open(fasta_name, 'r') as fasta_f,
               open(fastq_name, 'w') as fastq_f):
             simulate.simulate_reads(num, length, e, fasta_f, fastq_f)
@@ -75,7 +75,7 @@ def test_setup(config: test_config, verbose: bool) -> None:
             bname = os.path.basename(fastq_name)
             for tool in config.tools:
                 utils.relink(f"../../data/{bname}",
-                             f'test/tools/{utils.tool_dir(tool)}/{bname}')
+                             f'__TEST__/tools/{utils.tool_dir(tool)}/{bname}')
 
 
 def test_preprocess(config: test_config, verbose: bool) -> None:
@@ -83,7 +83,7 @@ def test_preprocess(config: test_config, verbose: bool) -> None:
         if 'preprocess' in tool:
             for k, n in config.genomes:
                 fastafile = \
-                    f'test/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
+                    f'__TEST__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
                 if not os.path.isfile(fastafile):
                     messages.error(f"Genome file {fastafile} not found")
                 cmd = tool['preprocess'].format(
@@ -104,9 +104,9 @@ def test_preprocess(config: test_config, verbose: bool) -> None:
 def test_map(config: test_config, verbose: bool) -> None:
     for name, tool in config.tools.items():
         for (k, n), (num, length, e) in config.genomes_reads:
-            fastaname = f'test/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
-            fastqname = f"test/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
-            outname = f"test/tools/{name}/{utils.out_name(n, k, num, length, e)}"                      # noqal: E501
+            fastaname = f'__TEST__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
+            fastqname = f"__TEST__/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
+            outname = f"__TEST__/tools/{name}/{utils.out_name(n, k, num, length, e)}"                      # noqal: E501
 
             if not os.path.isfile(fastaname):
                 messages.error(f"Couldn't find fasta file {fastaname}")
@@ -133,7 +133,7 @@ def test_map(config: test_config, verbose: bool) -> None:
 
 def sam_files(tool: str, config: test_config) -> list[str]:
     return [
-        f"test/tools/{utils.tool_dir(tool)}/{utils.out_name(n, k, num, length, e)}"  # noqal: E501
+        f"__TEST__/tools/{utils.tool_dir(tool)}/{utils.out_name(n, k, num, length, e)}"  # noqal: E501
         for (k, n), (num, length, e) in config.genomes_reads
     ]
 

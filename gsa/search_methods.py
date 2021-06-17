@@ -1,5 +1,4 @@
 from __future__ import annotations
-from mypy_extensions import Arg
 
 import argparse
 import typing
@@ -16,44 +15,38 @@ from . import messages
 
 T = typing.TypeVar('T')
 
-# I'm telling flake8 to shut up a few places here, because it
-# moronically complains that the strings in Arg() are undefined
-# names (which they are, but they are also fucking strings).
-# It's a known issue, but not fixed yet
 PystrExactSearchF = typing.Callable[
-    [Arg(str, "x"),      # noqal F821
-     Arg(str, "p")],     # noqal F821
+    [str, str],
     typing.Iterator[int]
 ]
 
 PystrExactPreprocessedF = typing.Callable[
-    [Arg(str, "p")],   # noqal F821
+    [str],
     typing.Iterator[int]
 ]
 
 PystrApproxPreprocessedF = typing.Callable[
-    [Arg(str, "p"),        # noqal F821
-     Arg(int, "edits")],   # noqal F821
+    [str, int],
     typing.Iterator[tuple[int, str]]
 ]
 
 PystrPreprocessF = typing.Callable[
-    [Arg(str, "x")],     # noqal F821
+    [str],
     typing.Any
 ]
 
 PystrReadExactPreprocessF = typing.Callable[
-    [typing.Any],     # noqal F821
+    [typing.Any],
     PystrExactPreprocessedF
 ]
 
 PystrReadApproxPreprocessF = typing.Callable[
-    [typing.Any],     # noqal F821
+    [typing.Any],
     PystrApproxPreprocessedF
 ]
 
 GSACommandF = typing.Callable[
-    [Arg(argparse.Namespace, "args")],      # noqal F821
+    [argparse.Namespace],
     None
 ]
 

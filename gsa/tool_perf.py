@@ -16,14 +16,7 @@ T = typing.TypeVar('T')
 
 
 class perf_config:
-
     def __init__(self, config: dict[str, typing.Any]) -> None:
-        self.reference = \
-            config['reference-tool'] if 'reference-tool' in config else None
-        if not self.reference:
-            messages.error(
-                "There is no reference tool to compare results against")
-
         self.tools = config['tools'] if 'tools' in config else None
         if not self.tools:
             messages.error("No tools specification in configuration file")
@@ -52,27 +45,27 @@ class perf_config:
 
 def perf_setup(config: perf_config, verbose: bool) -> None:
     # Setting up directories
-    utils.check_make_dir('perf')
-    utils.check_make_dir('perf/data')
-    utils.check_make_dir('perf/tools')
+    utils.check_make_dir('__PERF__', verbose)
+    utils.check_make_dir('__PERF__/data', verbose)
+    utils.check_make_dir('__PERF__/tools', verbose)
 
     for tool in config.tools:
-        utils.check_make_dir(f'perf/tools/{utils.tool_dir(tool)}')
+        utils.check_make_dir(f'__PERF__/tools/{utils.tool_dir(tool)}', verbose)
 
     # Simulating data
     for k, n in config.genomes:
-        fasta_name = f"perf/data/{utils.genome_name(n, k)}"
+        fasta_name = f"__PERF__/data/{utils.genome_name(n, k)}"
         with open(fasta_name, 'w') as f:
             simulate.simulate_genome(k, n, f)
 
         bname = os.path.basename(fasta_name)
         for tool in config.tools:
             utils.relink(f"../../data/{bname}",
-                         f'perf/tools/{utils.tool_dir(tool)}/{bname}')
+                         f'__PERF__/tools/{utils.tool_dir(tool)}/{bname}')
 
     for (k, n), (num, length, e) in config.genomes_reads:
-        fasta_name = f"perf/data/{utils.genome_name(n, k)}"
-        fastq_name = f"perf/data/{utils.reads_name(n, k, num, length, e)}"
+        fasta_name = f"__PERF__/data/{utils.genome_name(n, k)}"
+        fastq_name = f"__PERF__/data/{utils.reads_name(n, k, num, length, e)}"
         with (open(fasta_name, 'r') as fasta_f,
               open(fastq_name, 'w') as fastq_f):
             simulate.simulate_reads(num, length, e, fasta_f, fastq_f)
@@ -80,7 +73,7 @@ def perf_setup(config: perf_config, verbose: bool) -> None:
             bname = os.path.basename(fastq_name)
             for tool in config.tools:
                 utils.relink(f"../../data/{bname}",
-                             f'perf/tools/{utils.tool_dir(tool)}/{bname}')
+                             f'__PERF__/tools/{utils.tool_dir(tool)}/{bname}')
 
 
 def dup(n: int, itr: typing.Iterable[T]) -> typing.Iterator[T]:
@@ -103,7 +96,7 @@ def perf_preprocess(config: perf_config,
     for name in prep_tools:
         tool = config.tools[name]
         for k, n in dup(repeats, config.genomes):
-            fastafile = f'perf/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
+            fastafile = f'__PERF__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
             if not os.path.isfile(fastafile):
                 messages.error(f"Genome file {fastafile} not found")
 
@@ -128,7 +121,7 @@ def perf_preprocess(config: perf_config,
         tool = config.tools[name]
         for i, (k, n) in enumerate(dup(repeats, config.genomes)):
             cmd = tool['preprocess'].format(
-                genome=f'perf/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
+                genome=f'__PERF__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
             )
             start = time.time()
             res = subprocess.run(
@@ -153,8 +146,8 @@ def perf_map(config: perf_config,
     # Check files up front
     for name, tool in config.tools.items():
         for (k, n), (num, length, e) in config.genomes_reads:
-            fastaname = f'perf/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
-            fastqname = f"perf/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
+            fastaname = f'__PERF__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
+            fastqname = f"__PERF__/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
 
             if not os.path.isfile(fastaname):
                 messages.error(f"Couldn't find fasta file {fastaname}")
@@ -188,8 +181,8 @@ def perf_map(config: perf_config,
         for i, ((k, n), (num, length, e)) \
                 in enumerate(dup(repeats, config.genomes_reads)):
 
-            fastaname = f'perf/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
-            fastqname = f"perf/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
+            fastaname = f'__PERF__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
+            fastqname = f"__PERF__/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
 
             cmd = tool['map'].format(
                 genome=fastaname,
