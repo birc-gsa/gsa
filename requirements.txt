@@ -12,4 +12,5 @@ build
 colorama
 types-colorama
 pyyaml
+types-pyyaml
 git+https://github.com/mailund/pystr#egg=pystr
