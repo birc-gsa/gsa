@@ -61,7 +61,7 @@ def border(x: str, p: str, interactive: bool) -> None:
 
         border_show_prefix_next_comp(x, p, i + 1, b)
         if b == len(p):
-            print(bright_green(f"We matched at index {i - len(p)}"))
+            print(bright_green(f"We matched at index {i - len(p) + 1}"))
             print()
 
         if b == len(p):
