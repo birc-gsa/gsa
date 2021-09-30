@@ -1,5 +1,4 @@
 import typing
-import urllib.parse
 import os.path
 
 from . import messages
@@ -52,4 +51,5 @@ def out_name(genome_length: int, chromosomes: int,
 
 
 def tool_dir(tool: str) -> str:
-    return urllib.parse.quote_plus(tool)
+    return tool
+    # return shlex.escape(tool)
