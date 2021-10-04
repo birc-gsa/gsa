@@ -7,7 +7,7 @@ check:
 	mypy --strict -p gsa
 
 test: check
-	pytest --cov-report term-missing --cov=gsa tests
+	python3 -m pytest --cov-report term-missing --cov=gsa tests
 
 build:
 	python3 -m build
