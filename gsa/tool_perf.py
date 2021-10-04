@@ -91,6 +91,8 @@ def perf_preprocess(config: perf_config,
     prep_tools = [
         name for name, tool in config.tools.items() if 'preprocess' in tool
     ]
+    if not prep_tools:
+        return
 
     # No need to check this for all repeats, so just check at the beginning...
     for name in prep_tools:
