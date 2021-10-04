@@ -6,6 +6,7 @@ import pickle
 import pystr.alphabet
 import pystr.bwt
 import pystr.exact
+import pystr.suffixtree
 import os
 
 from . import fasta
@@ -56,7 +57,8 @@ def check_preprocess_input(args: argparse.Namespace) -> None:
         messages.error(f"Can't open genome file {args.genome}")
 
 
-def preprocess_wrapper(prep: PystrPreprocessF) -> GSACommandF:
+def preprocess_wrapper(name: str, desc: str,
+                       prep: PystrPreprocessF) -> GSACommandF:
     def wrap(args: argparse.Namespace) -> None:
         check_preprocess_input(args)
         preproc_name = args.genome + '.' + prep.__name__
@@ -72,8 +74,8 @@ def preprocess_wrapper(prep: PystrPreprocessF) -> GSACommandF:
         with open(preproc_name, 'wb') as preprocfile:
             pickle.dump(preprocessed, preprocfile)
 
-    wrap.__name__ = prep.__name__
-    wrap.__doc__ = prep.__name__
+    wrap.__name__ = name
+    wrap.__doc__ = desc
     return wrap
 
 
@@ -196,8 +198,24 @@ def approx_bwt_search_wrapper(tables: typing.Any) -> PystrApproxPreprocessedF:
 
 
 preprocess: list[GSACommandF] = [
-    preprocess_wrapper(exact_bwt),
-    preprocess_wrapper(approx_bwt)
+    preprocess_wrapper(
+        "exact-bwt",
+        "BWT for exact matching",
+        exact_bwt),
+    preprocess_wrapper(
+        "approx-bwt",
+        "BWT for approximative matching",
+        approx_bwt),
+    # Don't pickle these trees. Pickle can't handle the recursion
+    # depth.
+    # preprocess_wrapper(
+    #    "st-naive",
+    #    "Naive O(n²) suffix tree construction",
+    #    pystr.suffixtree.naive_st_construction),
+    # preprocess_wrapper(
+    #    "st-mccreight",
+    #    "McCreight suffix tree construction",
+    #    pystr.suffixtree.mccreight_st_construction),
 ]
 
 exact_search: list[GSACommandF] = [
@@ -208,7 +226,17 @@ exact_search: list[GSACommandF] = [
     exact_search_preprocess_wrapper(
         'bwt',
         'Burrows-Wheeler FM-index search',
-        exact_bwt, exact_bwt_search_wrapper)
+        exact_bwt, exact_bwt_search_wrapper),
+    exact_search_preprocess_wrapper(
+        'st-naive',
+        "Suffix tree search (built with naive algorithm)",
+        pystr.suffixtree.naive_st_construction,
+        lambda st: st.search),
+    exact_search_preprocess_wrapper(
+        'st-mccreight',
+        "Suffix tree search (built with McCreight's algorithm)",
+        pystr.suffixtree.mccreight_st_construction,
+        lambda st: st.search),
 ]
 
 approx_search: list[GSACommandF] = [
