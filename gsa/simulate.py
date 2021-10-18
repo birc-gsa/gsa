@@ -6,7 +6,7 @@ from . import fasta, fastq
 
 
 def simulate_dna_string(n: int) -> str:
-    return ''.join(random.choice("acbt") for _ in range(n))
+    return ''.join(random.choice("acgt") for _ in range(n))
 
 
 def simulate_genome(k: int, n: int,
