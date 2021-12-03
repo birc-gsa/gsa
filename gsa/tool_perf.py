@@ -16,7 +16,10 @@ T = typing.TypeVar('T')
 
 
 class perf_config:
-    def __init__(self, config: dict[str, typing.Any]) -> None:
+    def __init__(self, config: dict[str, typing.Any], config_fname: str) -> None:
+        self.config_fname = config_fname
+        self.relative_dir = os.path.dirname(os.path.abspath(self.config_fname))
+
         self.tools = config['tools'] if 'tools' in config else None
         if not self.tools:
             messages.error("No tools specification in configuration file")
@@ -121,14 +124,17 @@ def perf_preprocess(config: perf_config,
 
     for name in prep_tools:
         tool = config.tools[name]
+        tooldir = f'__PERF__/tools/{utils.tool_dir(name)}'
         for i, (k, n) in enumerate(dup(repeats, config.genomes)):
             cmd = tool['preprocess'].format(
-                genome=f'__PERF__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
+                genome=utils.genome_name(n, k),
+                root=config.relative_dir
             )
             start = time.time()
             res = subprocess.run(
                 args=cmd,
                 shell=True,
+                cwd=tooldir,
                 stdout=open(os.devnull, 'w'),
                 stderr=open(os.devnull, 'w')
             )
@@ -180,22 +186,22 @@ def perf_map(config: perf_config,
         row["edits"] = e
 
     for name, tool in config.tools.items():
+        tooldir = f'__PERF__/tools/{utils.tool_dir(name)}'
         for i, ((k, n), (num, length, e)) \
                 in enumerate(dup(repeats, config.genomes_reads)):
 
-            fastaname = f'__PERF__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
-            fastqname = f"__PERF__/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
-
             cmd = tool['map'].format(
-                genome=fastaname,
-                reads=fastqname,
+                genome=utils.genome_name(n, k),
+                reads=utils.reads_name(n, k, num, length, e),
                 e=e,
-                outfile=os.devnull
+                outfile=os.devnull,
+                root=config.relative_dir
             )
             start = time.time()
             res = subprocess.run(
                 args=cmd,
                 shell=True,
+                cwd=tooldir,
                 stdout=open(os.devnull, 'w'),
                 stderr=open(os.devnull, 'w')
             )

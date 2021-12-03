@@ -158,7 +158,8 @@ def test(args: argparse.Namespace) -> None:
     """Run a test by comparing the output from the tools specified
     in the configuration file."""
     config = tool_tests.test_config(
-        yaml.load(args.config.read(), Loader=yaml.SafeLoader)
+        yaml.load(args.config.read(), Loader=yaml.SafeLoader),
+        args.config.name
     )
     tool_tests.test_setup(config, args.verbose)
     tool_tests.test_preprocess(config, args.verbose)
@@ -184,7 +185,8 @@ def perf(args: argparse.Namespace) -> None:
     """Run a preformance comparison of the tools specified
     in the configuration file."""
     config = tool_perf.perf_config(
-        yaml.load(args.config.read(), Loader=yaml.SafeLoader)
+        yaml.load(args.config.read(), Loader=yaml.SafeLoader),
+        args.config.name
     )
     tool_perf.perf_setup(config, args.verbose)
     tool_perf.perf_preprocess(

@@ -218,6 +218,12 @@ preprocess: list[GSACommandF] = [
     #    pystr.suffixtree.mccreight_st_construction),
 ]
 
+
+def wrap_st(st: pystr.suffixtree.SuffixTree
+            ) -> typing.Callable[[str], typing.Iterator[int]]:
+    return st.search
+
+
 exact_search: list[GSACommandF] = [
     exact_search_wrapper(pystr.exact.naive),
     exact_search_wrapper(pystr.exact.kmp),
@@ -231,12 +237,12 @@ exact_search: list[GSACommandF] = [
         'st-naive',
         "Suffix tree search (built with naive algorithm)",
         pystr.suffixtree.naive_st_construction,
-        lambda st: st.search),
+        wrap_st),
     exact_search_preprocess_wrapper(
         'st-mccreight',
         "Suffix tree search (built with McCreight's algorithm)",
         pystr.suffixtree.mccreight_st_construction,
-        lambda st: st.search),
+        wrap_st),
 ]
 
 approx_search: list[GSACommandF] = [

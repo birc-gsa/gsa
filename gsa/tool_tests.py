@@ -13,8 +13,11 @@ from .vis.cols import green, red, plain
 
 
 class test_config:
+    def __init__(self, config: dict[str, typing.Any], config_fname: str) -> None:
 
-    def __init__(self, config: dict[str, typing.Any]) -> None:
+        self.config_fname = config_fname
+        self.relative_dir = os.path.dirname(os.path.abspath(self.config_fname))
+
         self.reference = \
             config['reference-tool'] if 'reference-tool' in config else None
         if not self.reference:
@@ -84,18 +87,21 @@ def test_preprocess(config: test_config, verbose: bool) -> None:
     for name, tool in config.tools.items():
         if 'preprocess' in tool:
             for k, n in config.genomes:
-                fastafile = \
-                    f'__TEST__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'  # noqal: E501
+                tooldir = f'__TEST__/tools/{utils.tool_dir(name)}'
+                genomefile = utils.genome_name(n, k)
+                fastafile = f'{tooldir}/{genomefile}'
                 if not os.path.isfile(fastafile):
                     messages.error(f"Genome file {fastafile} not found")
                 cmd = tool['preprocess'].format(
-                    genome=fastafile
+                    genome=genomefile,
+                    root=config.relative_dir
                 )
                 if verbose:
                     print("Preprocessing:", cmd)
                 res = subprocess.run(
                     args=cmd,
                     shell=True,
+                    cwd=tooldir,
                     stdout=open(os.devnull, 'w'),
                     stderr=open(os.devnull, 'w')
                 )
@@ -106,26 +112,29 @@ def test_preprocess(config: test_config, verbose: bool) -> None:
 def test_map(config: test_config, verbose: bool) -> None:
     for name, tool in config.tools.items():
         for (k, n), (num, length, e) in config.genomes_reads:
-            fastaname = f'__TEST__/tools/{utils.tool_dir(name)}/{utils.genome_name(n, k)}'                 # noqal: E501
-            fastqname = f"__TEST__/tools/{utils.tool_dir(name)}/{utils.reads_name(n, k, num, length, e)}"  # noqal: E501
-            outname = f"__TEST__/tools/{name}/{utils.out_name(n, k, num, length, e)}"                      # noqal: E501
+            tooldir = f'__TEST__/tools/{utils.tool_dir(name)}'
+            fastaname = utils.genome_name(n, k)
+            fastqname = utils.reads_name(n, k, num, length, e)
+            outname = utils.out_name(n, k, num, length, e)
 
-            if not os.path.isfile(fastaname):
+            if not os.path.isfile(f"{tooldir}/{fastaname}"):
                 messages.error(f"Couldn't find fasta file {fastaname}")
-            if not os.path.isfile(fastqname):
+            if not os.path.isfile(f"{tooldir}/{fastqname}"):
                 messages.error(f"Couldn't find fast1 file {fastqname}")
 
             cmd = tool['map'].format(
                 genome=fastaname,
                 reads=fastqname,
                 e=e,
-                outfile=outname
+                outfile=outname,
+                root=config.relative_dir
             )
             if verbose:
                 print("Mapping:", cmd)
             res = subprocess.run(
                 args=cmd,
                 shell=True,
+                cwd=tooldir,
                 stdout=open(os.devnull, 'w'),
                 stderr=open(os.devnull, 'w')
             )
