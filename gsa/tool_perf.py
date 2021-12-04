@@ -130,6 +130,8 @@ def perf_preprocess(config: perf_config,
                 genome=utils.genome_name(n, k),
                 root=config.relative_dir
             )
+            if verbose:
+                print(f"running {cmd}")
             start = time.time()
             res = subprocess.run(
                 args=cmd,
@@ -197,6 +199,10 @@ def perf_map(config: perf_config,
                 outfile=os.devnull,
                 root=config.relative_dir
             )
+
+            if verbose:
+                print(f"running {cmd}")
+
             start = time.time()
             res = subprocess.run(
                 args=cmd,
