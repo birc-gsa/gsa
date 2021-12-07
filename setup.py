@@ -12,5 +12,10 @@ setup(
             'gsa=gsa.main:main',
         ],
     },
-    install_requires=[],
+    install_requires=[
+        'colorama',
+        'types-colorama',
+        'pyyaml',
+        'git+https://github.com/mailund/pystr#egg=pystr'
+    ],
 )
