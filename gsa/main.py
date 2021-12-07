@@ -164,7 +164,8 @@ def test(args: argparse.Namespace) -> None:
     tool_tests.test_setup(config, args.verbose)
     tool_tests.test_preprocess(config, args.verbose)
     tool_tests.test_map(config, args.verbose)
-    tool_tests.test_compare(config, args.out, args.verbose)
+    res = tool_tests.test_compare(config, args.out, args.verbose)
+    sys.exit(0 if res else 2)
 
 
 @command(
