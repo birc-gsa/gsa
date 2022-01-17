@@ -8,7 +8,7 @@ tools:
   BMH:
     map: "gsa search {genome} {reads} -o {outfile} exact bmh"
   BWT:
-    preprocess: "gsa preprocess {genome} exact_bwt"
+    preprocess: "gsa preprocess {genome} exact-bwt"
     map: "gsa search {genome} {reads} -o {outfile} exact bwt"
   
 reference-tool: naive

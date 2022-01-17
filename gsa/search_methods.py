@@ -92,7 +92,7 @@ def exact_search_wrapper(search: PystrExactSearchF) -> GSACommandF:
         with open(args.genome, 'r') as f:
             genome = fasta.read_fasta(f)
         with open(args.reads, 'r') as f:
-            for readname, read, _ in fastq.scan_reads(f):
+            for readname, read in fastq.scan_reads(f):
                 for chrname, seq in genome.items():
                     for pos in search(seq, read):
                         sam.ssam_record(
@@ -139,7 +139,7 @@ def exact_search_preprocess_wrapper(
             args.genome, prep, search_wrap
         )
         with open(args.reads, 'r') as f:
-            for readname, read, _ in fastq.scan_reads(f):
+            for readname, read in fastq.scan_reads(f):
                 for chrname, search in searchers.items():
                     for pos in search(read):
                         sam.ssam_record(
@@ -165,7 +165,7 @@ def approx_search_preprocess_wrapper(
             args.genome, prep, search_wrap
         )
         with open(args.reads, 'r') as f:
-            for readname, read, _ in fastq.scan_reads(f):
+            for readname, read in fastq.scan_reads(f):
                 for chrname, search in searchers.items():
                     for pos, cigar in search(read, args.edits):
                         sam.ssam_record(
