@@ -92,14 +92,14 @@ def exact_search_wrapper(search: PystrExactSearchF) -> GSACommandF:
         with open(args.genome, 'r') as f:
             genome = fasta.read_fasta(f)
         with open(args.reads, 'r') as f:
-            for readname, read, qual in fastq.scan_reads(f):
+            for readname, read, _ in fastq.scan_reads(f):
                 for chrname, seq in genome.items():
                     for pos in search(seq, read):
-                        sam.sam_record(
+                        sam.ssam_record(
                             args.out,
                             readname, chrname,
                             pos, f'{len(read)}M',
-                            read, qual
+                            read
                         )
     wrap.__name__ = search.__name__
     wrap.__doc__ = search.__doc__
@@ -139,14 +139,14 @@ def exact_search_preprocess_wrapper(
             args.genome, prep, search_wrap
         )
         with open(args.reads, 'r') as f:
-            for readname, read, qual in fastq.scan_reads(f):
+            for readname, read, _ in fastq.scan_reads(f):
                 for chrname, search in searchers.items():
                     for pos in search(read):
-                        sam.sam_record(
+                        sam.ssam_record(
                             args.out,
                             readname, chrname,
                             pos, f'{len(read)}M',
-                            read, qual
+                            read
                         )
     wrap.__name__ = name
     wrap.__doc__ = doc
@@ -165,14 +165,14 @@ def approx_search_preprocess_wrapper(
             args.genome, prep, search_wrap
         )
         with open(args.reads, 'r') as f:
-            for readname, read, qual in fastq.scan_reads(f):
+            for readname, read, _ in fastq.scan_reads(f):
                 for chrname, search in searchers.items():
                     for pos, cigar in search(read, args.edits):
-                        sam.sam_record(
+                        sam.ssam_record(
                             args.out,
                             readname, chrname,
                             pos, cigar,
-                            read, qual
+                            read
                         )
     wrap.__name__ = name
     wrap.__doc__ = doc

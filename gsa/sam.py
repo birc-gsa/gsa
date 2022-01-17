@@ -1,9 +1,16 @@
+"""Writing hits to "simple"-SAM format."""
+
 import typing
 
 
-def sam_record(out: typing.TextIO,
-               qname: str, rname: str,
-               pos: int, cigar: str,
-               read: str, qual: str) -> None:
-    print(f"{qname}\t0\t{rname}\t{pos+1}\t0\t{cigar}\t*\t0\t0\t{read}\t{qual}",
-          file=out)
+def ssam_record(out: typing.TextIO,
+                sname: str, rname: str,
+                pos: int, cigar: str,
+                read: str) -> None:
+    """Write location of a match as simple-sam format.
+
+    The "simple" SAM format is like the SAM format, except that we only
+    write the fields we use in the GSA class, so we write tab-separated
+    columns of sequence name, read name, position, cigar and read.
+    """
+    print(sname, rname, pos+1, cigar, read, sep='\t', file=out)
