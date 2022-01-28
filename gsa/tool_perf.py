@@ -16,9 +16,13 @@ T = typing.TypeVar('T')
 
 
 class perf_config:
-    def __init__(self, config: dict[str, typing.Any], config_fname: str) -> None:
+    def __init__(self, config: dict[str, typing.Any],
+                 relative_dir: str | None,
+                 config_fname: str) -> None:
+
         self.config_fname = config_fname
-        self.relative_dir = os.path.dirname(os.path.abspath(self.config_fname))
+        self.relative_dir = relative_dir or os.path.dirname(
+            os.path.abspath(self.config_fname))
 
         self.tools = config['tools'] if 'tools' in config else None
         if not self.tools:

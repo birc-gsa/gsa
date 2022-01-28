@@ -146,10 +146,20 @@ for algo in search_methods.approx_search:
     parser.set_defaults(command=algo)
 
 
+def is_dir_path(string):
+    if os.path.isdir(string):
+        return string
+    else:
+        raise argparse.ArgumentTypeError(f"{string}) is not a directory")
+
+
 @command(
     argument("-o", "--out",
              help="Report file (default stdout).",
              type=argparse.FileType('w'), default=sys.stdout),
+    argument("-d", "--dir",
+             help="Relative directory. Default is directory of config file.",
+             type=is_dir_path, default=None),
     argument('config',
              help="Configuration file",
              type=argparse.FileType('r')),
@@ -159,6 +169,7 @@ def test(args: argparse.Namespace) -> None:
     in the configuration file."""
     config = tool_tests.test_config(
         yaml.load(args.config.read(), Loader=yaml.SafeLoader),
+        args.dir,
         args.config.name
     )
     tool_tests.test_setup(config, args.verbose)
@@ -178,6 +189,9 @@ def test(args: argparse.Namespace) -> None:
     argument("-m", "--mapping-report",
              help="Report file for mapping (default stdout).",
              type=argparse.FileType('w'), default=sys.stdout),
+    argument("-d", "--dir",
+             help="Relative directory. Default is directory of config file.",
+             type=is_dir_path, default=None),
     argument('config',
              help="Configuration file",
              type=argparse.FileType('r')),
@@ -187,6 +201,7 @@ def perf(args: argparse.Namespace) -> None:
     in the configuration file."""
     config = tool_perf.perf_config(
         yaml.load(args.config.read(), Loader=yaml.SafeLoader),
+        args.dir,
         args.config.name
     )
     tool_perf.perf_setup(config, args.verbose)
