@@ -16,6 +16,6 @@ setup(
         'colorama',
         'types-colorama',
         'pyyaml',
-        'pystr'
+        'git+https://github.com/mailund/pystr#egg=pystr'
     ],
 )
